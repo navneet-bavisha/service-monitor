@@ -1,22 +1,53 @@
 ---
-- name: Check MariaDB and Nginx
+- name: Monitor MariaDB and Nginx Services
   hosts: all
   become: yes
   gather_facts: no
 
+  vars:
+    webhook_url: "https://chat.googleapis.com/v1/spaces/AAQAwD5m7A8/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=xljkrFZVPeEgmBNMJ_i8CpM279yWKbZUH457B8b1dTI"
+
   tasks:
+
     - name: Check MariaDB status
-      shell: systemctl is-active mariadb
+      command: systemctl is-active mariadb
       register: mariadb_status
       ignore_errors: yes
 
     - name: Check Nginx status
-      shell: systemctl is-active nginx
+      command: systemctl is-active nginx
       register: nginx_status
       ignore_errors: yes
 
-    - name: Fail if any service is down
-      fail:
-        msg: "MariaDB={{ mariadb_status.stdout }}, Nginx={{ nginx_status.stdout }}"
+    # 🔴 If any service is DOWN
+    - name: Send DOWN alert
+      uri:
+        url: "{{ https://chat.googleapis.com/v1/spaces/AAQAwD5m7A8/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=xljkrFZVPeEgmBNMJ_i8CpM279yWKbZUH457B8b1dTI }}"
+        method: POST
+        body_format: json
+        body:
+          text: |
+            🚨 SERVICE DOWN ALERT 🚨
+            MariaDB: {{ mariadb_status.stdout }}
+            Nginx: {{ nginx_status.stdout }}
+            Server: {{ inventory_hostname }}
+        headers:
+          Content-Type: "application/json"
       when: mariadb_status.stdout != "active" or nginx_status.stdout != "active"
+
+    # 🟢 If both services are UP
+    - name: Send UP alert
+      uri:
+        url: "{{ https://chat.googleapis.com/v1/spaces/AAQAwD5m7A8/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=xljkrFZVPeEgmBNMJ_i8CpM279yWKbZUH457B8b1dTI }}"
+        method: POST
+        body_format: json
+        body:
+          text: |
+            ✅ SERVICES RUNNING
+            MariaDB: active
+            Nginx: active
+            Server: {{ inventory_hostname }}
+        headers:
+          Content-Type: "application/json"
+      when: mariadb_status.stdout == "active" and nginx_status.stdout == "active"
 
