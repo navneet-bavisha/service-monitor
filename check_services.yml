@@ -1,21 +1,15 @@
----
 - name: Check MariaDB and Nginx
   hosts: all
   become: yes
   gather_facts: no
 
   tasks:
-    - name: Check MariaDB status
-      shell: systemctl is-active mariadb
+    - name: Check MariaDB
+      command: systemctl is-active mariadb
       register: mariadb_status
-      ignore_errors: yes
+      failed_when: mariadb_status.stdout != "active"
 
-    - name: Check Nginx status
-      shell: systemctl is-active nginx
+    - name: Check Nginx
+      command: systemctl is-active nginx
       register: nginx_status
-      ignore_errors: yes
-
-    - name: Fail if any service is down
-      fail:
-        msg: "MariaDB={{ mariadb_status.stdout }}, Nginx={{ nginx_status.stdout }}"
-      when: mariadb_status.stdout != "active" or nginx_status.stdout != "active"
+      failed_when: nginx_status.stdout != "active"
